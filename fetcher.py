@@ -203,7 +203,7 @@ async def fetch_svt_official():
         feed = feedparser.parse(url)
         posts = []
         for entry in feed.entries[:50]:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             thumbs = entry.get("media_thumbnail", [{}])
             thumb = thumbs[0].get("url") if thumbs else None
             stats = entry.get("media_statistics", {})
@@ -237,7 +237,7 @@ async def fetch_hybe_rss():
         feed = feedparser.parse(url)
         posts = []
         for entry in feed.entries[:50]:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             if not _is_svt(title):
                 continue
             if _is_shorts(title):
@@ -278,7 +278,7 @@ async def fetch_playlist_rss(playlist_id, content_type, author):
         feed = feedparser.parse(url)
         posts = []
         for entry in feed.entries:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             thumbs = entry.get("media_thumbnail", [{}])
             thumb = thumbs[0].get("url") if thumbs else None
             stats = entry.get("media_statistics", {})
@@ -329,7 +329,7 @@ async def fetch_playlist_scrape(playlist_id, content_type, author):
                 if not v:
                     continue
                 vid_id = v.get("videoId", "")
-                title = v.get("title", {}).get("runs", [{}])[0].get("text", "")
+                title = _clean_title(v.get("title", {}).get("runs", [{}])[0].get("text", ""))
                 if not title or not vid_id:
                     continue
                 view_runs = v.get("videoInfo", {}).get("runs", [])
@@ -426,7 +426,7 @@ async def fetch_kr_ent_rss(name, rss_url):
         feed = feedparser.parse(rss_url)
         posts = []
         for entry in feed.entries[:50]:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             if not _is_svt(title + " " + entry.get("summary", "")):
                 continue
             thumb = None
