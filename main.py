@@ -151,7 +151,12 @@ async def lifespan(app):
 app = FastAPI(title="SVT FLOW API", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "*",
+        "https://svt-flow-adbc0.web.app",
+        "https://svt-flow-adbc0.firebaseapp.com",
+    ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
