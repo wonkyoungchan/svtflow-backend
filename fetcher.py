@@ -739,8 +739,14 @@ async def enrich_thumbnails(posts: list) -> list:
         except:
             pass
 
-    # 최대 30개만 병렬로 가져오기
-    await asyncio.gather(*[fetch_og(p) for p in news_without_thumb[:30]])
-    filled = len([p for p in news_without_thumb[:30] if p.get("thumbnail")])
-    print("[OG Image] " + str(filled) + "개 썸네일 보완")
+    # 최대 150개 병렬로 가져오기
+    batch_size = 50
+    total_filled = 0
+    for i in range(0, min(len(news_without_thumb), 150), batch_size):
+        batch = news_without_thumb[i:i+batch_size]
+        await asyncio.gather(*[fetch_og(p) for p in batch])
+        filled = len([p for p in batch if p.get("thumbnail")])
+        total_filled += filled
+
+    print("[OG Image] " + str(total_filled) + "개 썸네일 보완")
     return posts
