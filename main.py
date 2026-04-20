@@ -133,6 +133,30 @@ async def refresh_data():
             if dt == datetime.min or dt > now - timedelta(days=90):
                 filtered.append(p)
 
+    import re as _re
+    def _tkey(t):
+        return _re.sub('[^가-힣]', '', t)[:35]
+    seen, done, result = {}, set(), []
+    for p in filtered:
+        if p.get('source') == 'youtube':
+            result.append(p)
+            continue
+        k = _tkey(p.get('title',''))
+        if not k:
+            result.append(p)
+            continue
+        if k not in seen:
+            seen[k] = p
+        elif p.get('thumbnail') and not seen[k].get('thumbnail'):
+            seen[k] = p
+    for p in filtered:
+        if p.get('source') == 'youtube':
+            continue
+        k = _tkey(p.get('title',''))
+        if k and k not in done:
+            done.add(k)
+            result.append(seen.get(k, p))
+    filtered = result
     filtered.sort(key=parse_date, reverse=True)
     filtered = filtered[:5000]
 
