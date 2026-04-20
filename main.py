@@ -143,7 +143,7 @@ async def refresh_data():
 async def lifespan(app):
     await refresh_data()
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(refresh_data, "interval", minutes=3)
+    scheduler.add_job(refresh_data, "interval", minutes=30)
     scheduler.start()
     yield
     scheduler.shutdown()
