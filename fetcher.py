@@ -90,7 +90,14 @@ def _safe_int(tag):
 
 def _is_shorts(title):
     t = title.lower()
-    return "#shorts" in t or "#short" in t
+    return (
+        "#shorts" in t or
+        "#short" in t or
+        "shorts" in t or
+        "쇼츠" in t or
+        "short ver" in t or
+        "short version" in t
+    )
 
 def _parse_views(text):
     if not text:
@@ -332,6 +339,8 @@ async def fetch_playlist_scrape(playlist_id, content_type, author):
                 title = _clean_title(v.get("title", {}).get("runs", [{}])[0].get("text", ""))
                 if not title or not vid_id:
                     continue
+                if _is_shorts(title):
+                    continue
                 view_runs = v.get("videoInfo", {}).get("runs", [])
                 view_text = view_runs[0].get("text", "") if view_runs else ""
                 views = _parse_views(view_text)
@@ -393,6 +402,8 @@ async def fetch_playlist_all_api(playlist_id, content_type, author):
                     thumb = snippet.get("thumbnails", {}).get("high", {}).get("url")
                     
                     if not vid_id or title in ("Deleted video", "Private video"):
+                        continue
+                    if _is_shorts(title):
                         continue
                     
                     posts.append({
