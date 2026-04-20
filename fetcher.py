@@ -63,6 +63,17 @@ HEADERS = {
     )
 }
 
+def _clean_title(title: str) -> str:
+    """제목에서 이상한 문자 제거"""
+    import unicodedata
+    # 유니코드 정규화
+    title = unicodedata.normalize('NFC', title)
+    # 제어문자 제거
+    title = ''.join(c for c in title if unicodedata.category(c) not in ('Cc', 'Cf') or c in (' ', '\n'))
+    # HTML 엔티티 제거
+    title = title.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"').replace('&#39;', "'")
+    return title.strip()
+
 def _make_id(*parts):
     return hashlib.md5("|".join(parts).encode()).hexdigest()[:16]
 
@@ -377,7 +388,7 @@ async def fetch_playlist_all_api(playlist_id, content_type, author):
                 for item in data.get("items", []):
                     snippet = item.get("snippet", {})
                     vid_id = snippet.get("resourceId", {}).get("videoId", "")
-                    title = snippet.get("title", "")
+                    title = _clean_title(snippet.get("title", ""))
                     published = snippet.get("publishedAt", "").replace("Z", "")
                     thumb = snippet.get("thumbnails", {}).get("high", {}).get("url")
                     
@@ -739,14 +750,8 @@ async def enrich_thumbnails(posts: list) -> list:
         except:
             pass
 
-    # 최대 150개 병렬로 가져오기
-    batch_size = 50
-    total_filled = 0
-    for i in range(0, min(len(news_without_thumb), 150), batch_size):
-        batch = news_without_thumb[i:i+batch_size]
-        await asyncio.gather(*[fetch_og(p) for p in batch])
-        filled = len([p for p in batch if p.get("thumbnail")])
-        total_filled += filled
-
-    print("[OG Image] " + str(total_filled) + "개 썸네일 보완")
+    # 최대 30개만 병렬로 가져오기
+    await asyncio.gather(*[fetch_og(p) for p in news_without_thumb[:30]])
+    filled = len([p for p in news_without_thumb[:30] if p.get("thumbnail")])
+    print("[OG Image] " + str(filled) + "개 썸네일 보완")
     return posts
