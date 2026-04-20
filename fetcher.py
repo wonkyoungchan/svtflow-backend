@@ -63,6 +63,17 @@ HEADERS = {
     )
 }
 
+def _clean_title(title: str) -> str:
+    """제목에서 이상한 문자 제거"""
+    import unicodedata
+    # 유니코드 정규화
+    title = unicodedata.normalize('NFC', title)
+    # 제어문자 제거
+    title = ''.join(c for c in title if unicodedata.category(c) not in ('Cc', 'Cf') or c in (' ', '\n'))
+    # HTML 엔티티 제거
+    title = title.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"').replace('&#39;', "'")
+    return title.strip()
+
 def _make_id(*parts):
     return hashlib.md5("|".join(parts).encode()).hexdigest()[:16]
 
@@ -192,7 +203,7 @@ async def fetch_svt_official():
         feed = feedparser.parse(url)
         posts = []
         for entry in feed.entries[:50]:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             thumbs = entry.get("media_thumbnail", [{}])
             thumb = thumbs[0].get("url") if thumbs else None
             stats = entry.get("media_statistics", {})
@@ -226,7 +237,7 @@ async def fetch_hybe_rss():
         feed = feedparser.parse(url)
         posts = []
         for entry in feed.entries[:50]:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             if not _is_svt(title):
                 continue
             if _is_shorts(title):
@@ -267,7 +278,7 @@ async def fetch_playlist_rss(playlist_id, content_type, author):
         feed = feedparser.parse(url)
         posts = []
         for entry in feed.entries:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             thumbs = entry.get("media_thumbnail", [{}])
             thumb = thumbs[0].get("url") if thumbs else None
             stats = entry.get("media_statistics", {})
@@ -318,7 +329,7 @@ async def fetch_playlist_scrape(playlist_id, content_type, author):
                 if not v:
                     continue
                 vid_id = v.get("videoId", "")
-                title = v.get("title", {}).get("runs", [{}])[0].get("text", "")
+                title = _clean_title(v.get("title", {}).get("runs", [{}])[0].get("text", ""))
                 if not title or not vid_id:
                     continue
                 view_runs = v.get("videoInfo", {}).get("runs", [])
@@ -377,7 +388,7 @@ async def fetch_playlist_all_api(playlist_id, content_type, author):
                 for item in data.get("items", []):
                     snippet = item.get("snippet", {})
                     vid_id = snippet.get("resourceId", {}).get("videoId", "")
-                    title = snippet.get("title", "")
+                    title = _clean_title(snippet.get("title", ""))
                     published = snippet.get("publishedAt", "").replace("Z", "")
                     thumb = snippet.get("thumbnails", {}).get("high", {}).get("url")
                     
@@ -415,7 +426,7 @@ async def fetch_kr_ent_rss(name, rss_url):
         feed = feedparser.parse(rss_url)
         posts = []
         for entry in feed.entries[:50]:
-            title = entry.get("title", "")
+            title = _clean_title(entry.get("title", ""))
             if not _is_svt(title + " " + entry.get("summary", "")):
                 continue
             thumb = None
@@ -644,14 +655,16 @@ async def fetch_all_sources():
 
 
     # 고잉세븐틴 플레이리스트 (RSS + 스크래핑)
-    # 고잉세븐틴은 YouTube API로 전체 가져오기
+    # 고잉세븐틴 플레이리스트
     for pl_id, ctype, author in GOING17_PLAYLISTS:
-        tasks.append(fetch_playlist_all_api(pl_id, ctype, author))
+        tasks.append(fetch_playlist_rss(pl_id, ctype, author))
+        tasks.append(fetch_playlist_scrape(pl_id, ctype, author))
 
     # MV 플레이리스트 (RSS + 스크래핑)
-    # MV 플레이리스트도 YouTube API로 전체 가져오기
+    # MV 플레이리스트
     for pl_id, ctype, author in MV_PLAYLISTS:
-        tasks.append(fetch_playlist_all_api(pl_id, ctype, author))
+        tasks.append(fetch_playlist_rss(pl_id, ctype, author))
+        tasks.append(fetch_playlist_scrape(pl_id, ctype, author))
 
     # 뉴스
     for name, rss_url in KR_ENT_RSS:
