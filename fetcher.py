@@ -45,8 +45,9 @@ DC_GALLERIES = {}
 
 # 고잉세븐틴 공식 플레이리스트
 GOING17_PLAYLISTS = [
-    ("PLk_UmMfvZDx21Z9eEQ9DcIlUfZp1uwEup", "going17", "GOING SEVENTEEN"),
-    ("PLFo8WcX9UtEdKxtn1XIjOyo2ifV788AC4", "going17", "GOING SEVENTEEN"),
+    ("PLFo8WcX9UtEdKxtn1XIjOyo2ifV788AC4", "going17", "GOING SEVENTEEN"),  # 전체
+    ("PLk_UmMfvZDx21Z9eEQ9DcIlUfZp1uwEup", "going17", "GOING SEVENTEEN"),  # 최신
+    ("PLk_UmMfvZDx0AxYMEYY8amHXFG2mYF0rF", "going17", "GOING SEVENTEEN"),  # 2017
 ]
 
 # MV 플레이리스트
