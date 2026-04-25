@@ -65,14 +65,10 @@ HEADERS = {
 }
 
 def _clean_title(title: str) -> str:
-    """제목에서 이상한 문자 제거"""
-    import unicodedata
-    # 유니코드 정규화
+    import unicodedata, html
+    title = html.unescape(title)
     title = unicodedata.normalize('NFC', title)
-    # 제어문자 제거
-    title = ''.join(c for c in title if unicodedata.category(c) not in ('Cc', 'Cf') or c in (' ', '\n'))
-    # HTML 엔티티 제거
-    title = title.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"').replace('&#39;', "'")
+    title = ''.join(c for c in title if unicodedata.category(c) not in ('Cc', 'Cf') or c in (' ',))
     return title.strip()
 
 def _make_id(*parts):
