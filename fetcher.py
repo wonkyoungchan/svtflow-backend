@@ -176,7 +176,8 @@ RECENT_MV_LIST = [
 
 def load_recent_mv():
     posts = []
-    for vid_id, title, published in RECENT_MV_LIST:
+    for vid_id, raw_title, published in RECENT_MV_LIST:
+        title = _clean_title(raw_title)
         posts.append({
             "id": _make_id("yt", vid_id),
             "source": "youtube",
