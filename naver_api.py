@@ -50,7 +50,7 @@ async def fetch_naver_news_api(keyword: str) -> list:
             for item in items:
                 # HTML 태그 제거
                 import re
-                title = re.sub(r'<[^>]+>', '', item.get("title", ""))
+                import html as _html; title = _html.unescape(re.sub(r'<[^>]+>', '', item.get("title", "")))
                 desc  = re.sub(r'<[^>]+>', '', item.get("description", ""))
                 link  = item.get("originallink") or item.get("link", "")
                 # 언론사 추출 (link에서)
