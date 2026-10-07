@@ -1,9 +1,10 @@
 import httpx
+import os
 from datetime import datetime
 import hashlib
 
-NAVER_CLIENT_ID = "l_FcauE4uOYFmW1nWUOd"
-NAVER_CLIENT_SECRET = "uEnbahULbM"
+NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "")
+NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "")
 
 HEADERS = {
     "X-Naver-Client-Id": NAVER_CLIENT_ID,

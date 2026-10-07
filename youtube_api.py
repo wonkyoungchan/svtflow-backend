@@ -1,7 +1,8 @@
 import httpx
+import os
 import re
 
-YOUTUBE_API_KEY = "AIzaSyCgdFF9MZK_Yt_GfYQ-rCtOQhr2ypCdqq4"
+YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
 TIMEOUT = httpx.Timeout(15.0)
 
 # HYBE LABELS 채널 ID

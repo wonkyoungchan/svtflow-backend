@@ -43,18 +43,7 @@ NAVER_KEYWORDS = [
 WEIBO_UIDS = {"SEVENTEEN_official": "6592471661"}
 DC_GALLERIES = {}
 
-# 고잉세븐틴 공식 플레이리스트
-GOING17_PLAYLISTS = [
-    ("PLFo8WcX9UtEdKxtn1XIjOyo2ifV788AC4", "going17", "GOING SEVENTEEN"),  # 전체
-    ("PLk_UmMfvZDx21Z9eEQ9DcIlUfZp1uwEup", "going17", "GOING SEVENTEEN"),  # 최신
-    ("PLk_UmMfvZDx0AxYMEYY8amHXFG2mYF0rF", "going17", "GOING SEVENTEEN"),  # 2017
-]
-
-# MV 플레이리스트
-MV_PLAYLISTS = [
-    ("PLRldTKNyS717C0FYxHk5aPrzUM1zPVi-T", "mv", "SEVENTEEN MV"),
-    ("PL4qyDL8uSH8bHmGOAeUXBAhqMTxJaymzG", "mv", "SEVENTEEN MV"),
-]
+SVT_CHANNEL_ID = "UCfkXDY7vwkcJ8ddFGz8KusA"
 
 TIMEOUT = httpx.Timeout(20.0)
 HEADERS = {
@@ -196,18 +185,20 @@ def load_recent_mv():
 
 
 async def fetch_svt_official():
-    url = "https://www.youtube.com/feeds/videos.xml?channel_id=UCfkXDY7vwkcJ8ddFGz8KusA"
+    url = "https://www.youtube.com/feeds/videos.xml?channel_id=" + SVT_CHANNEL_ID
     try:
         feed = feedparser.parse(url)
         posts = []
         for entry in feed.entries[:50]:
             title = _clean_title(entry.get("title", ""))
+            if _is_shorts(title):
+                continue
+            if "going seventeen" not in title.lower():
+                continue
             thumbs = entry.get("media_thumbnail", [{}])
             thumb = thumbs[0].get("url") if thumbs else None
             stats = entry.get("media_statistics", {})
             views = int(stats.get("views", 0) or 0) if isinstance(stats, dict) else 0
-            if _is_shorts(title):
-                continue
             posts.append({
                 "id": _make_id("yt", entry.get("yt_videoid", entry.get("id", ""))),
                 "source": "youtube",
@@ -215,17 +206,122 @@ async def fetch_svt_official():
                 "text": title,
                 "url": entry.get("link", ""),
                 "thumbnail": thumb,
-                "author": "SEVENTEEN Official",
+                "author": "GOING SEVENTEEN",
                 "published": entry.get("published", ""),
                 "members": [],
                 "likes": views,
                 "content_type": "going17",
             })
-        print("[SVT Official] " + str(len(posts)) + "개 (going17)")
+        print("[SVT Official] going17 " + str(len(posts)) + "개")
         return posts
     except Exception as e:
         print("[SVT Official] 오류: " + str(e))
         return []
+
+
+async def discover_going17_playlists():
+    from youtube_api import YOUTUBE_API_KEY
+    if not YOUTUBE_API_KEY:
+        print("[Playlist Discovery] API 키 없음, 스킵")
+        return []
+
+    playlists = []
+    next_page = None
+
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            while True:
+                url = (
+                    "https://www.googleapis.com/youtube/v3/playlists"
+                    "?part=snippet,contentDetails"
+                    "&channelId=" + SVT_CHANNEL_ID +
+                    "&maxResults=50"
+                    "&key=" + YOUTUBE_API_KEY +
+                    (("&pageToken=" + next_page) if next_page else "")
+                )
+                resp = await client.get(url)
+                if resp.status_code != 200:
+                    print("[Playlist Discovery] API 응답 " + str(resp.status_code))
+                    break
+
+                data = resp.json()
+                for item in data.get("items", []):
+                    title = item["snippet"]["title"]
+                    if "going seventeen" in title.lower() or "고잉" in title:
+                        playlists.append(item["id"])
+                        print("[Playlist Discovery] 발견: " + title + " (" + item["id"] + ")")
+
+                next_page = data.get("nextPageToken")
+                if not next_page:
+                    break
+    except Exception as e:
+        print("[Playlist Discovery] 오류: " + str(e))
+
+    print("[Playlist Discovery] GOING SEVENTEEN 재생목록 " + str(len(playlists)) + "개")
+    return playlists
+
+
+async def fetch_going17_from_uploads():
+    from youtube_api import YOUTUBE_API_KEY
+    if not YOUTUBE_API_KEY:
+        return []
+
+    uploads_playlist = "UU" + SVT_CHANNEL_ID[2:]
+    posts = []
+    next_page = None
+    pages = 0
+
+    try:
+        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
+            while pages < 3:
+                url = (
+                    "https://www.googleapis.com/youtube/v3/playlistItems"
+                    "?part=snippet"
+                    "&playlistId=" + uploads_playlist +
+                    "&maxResults=50"
+                    "&key=" + YOUTUBE_API_KEY +
+                    (("&pageToken=" + next_page) if next_page else "")
+                )
+                resp = await client.get(url)
+                if resp.status_code != 200:
+                    break
+
+                data = resp.json()
+                for item in data.get("items", []):
+                    snippet = item.get("snippet", {})
+                    vid_id = snippet.get("resourceId", {}).get("videoId", "")
+                    title = _clean_title(snippet.get("title", ""))
+
+                    if not vid_id or title in ("Deleted video", "Private video"):
+                        continue
+                    if "going seventeen" not in title.lower():
+                        continue
+                    if _is_shorts(title):
+                        continue
+
+                    posts.append({
+                        "id": _make_id("yt", vid_id),
+                        "source": "youtube",
+                        "title": title,
+                        "text": title,
+                        "url": "https://www.youtube.com/watch?v=" + vid_id,
+                        "thumbnail": snippet.get("thumbnails", {}).get("high", {}).get("url"),
+                        "author": "GOING SEVENTEEN",
+                        "published": snippet.get("publishedAt", "").replace("Z", ""),
+                        "members": [],
+                        "likes": 0,
+                        "content_type": "going17",
+                    })
+
+                next_page = data.get("nextPageToken")
+                if not next_page:
+                    break
+                pages += 1
+    except Exception as e:
+        print("[Going17 Uploads] 오류: " + str(e))
+
+    print("[Going17 Uploads] " + str(len(posts)) + "개 에피소드")
+    return posts
 
 
 # ── HYBE LABELS RSS → mv ─────────────────────────────
@@ -646,23 +742,23 @@ async def fetch_dcinside(name, gall_id):
 
 # ── 전체 수집 ─────────────────────────────────────────
 async def fetch_all_sources():
+    # 방법 A: YouTube API로 GOING SEVENTEEN 재생목록 자동 탐색
+    going17_pls = await discover_going17_playlists()
+
     tasks = []
 
-    # HYBE 채널 → mv
+    # HYBE 채널 → mv (RSS 기반)
     tasks.append(fetch_hybe_rss())
 
+    # 방법 B: SVT 공식 채널 RSS → going17 (제목 패턴 기반)
+    tasks.append(fetch_svt_official())
 
-    # 고잉세븐틴 플레이리스트 (RSS + 스크래핑)
-    # 고잉세븐틴 플레이리스트
-    for pl_id, ctype, author in GOING17_PLAYLISTS:
-        tasks.append(fetch_playlist_rss(pl_id, ctype, author))
-        tasks.append(fetch_playlist_scrape(pl_id, ctype, author))
-
-    # MV 플레이리스트 (RSS + 스크래핑)
-    # MV 플레이리스트
-    for pl_id, ctype, author in MV_PLAYLISTS:
-        tasks.append(fetch_playlist_rss(pl_id, ctype, author))
-        tasks.append(fetch_playlist_scrape(pl_id, ctype, author))
+    # 방법 A 보강: 발견된 재생목록에서 전체 에피소드 가져오기
+    if going17_pls:
+        for pl_id in going17_pls:
+            tasks.append(fetch_playlist_all_api(pl_id, "going17", "GOING SEVENTEEN"))
+    else:
+        tasks.append(fetch_going17_from_uploads())
 
     # 뉴스
     for name, rss_url in KR_ENT_RSS:
