@@ -1,4 +1,5 @@
 .env
 __pycache__/
 cache.json
+playlist_cache.json
 .venv/

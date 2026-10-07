@@ -12,6 +12,26 @@ SVT_KEYWORDS = [
 
 SVT_CHANNEL_ID = "UCfkXDY7vwkcJ8ddFGz8KusA"
 
+PLAYLIST_CACHE_FILE = "playlist_cache.json"
+
+def _load_playlist_cache():
+    import os
+    if not os.path.exists(PLAYLIST_CACHE_FILE):
+        return None
+    try:
+        with open(PLAYLIST_CACHE_FILE, "r") as f:
+            data = json.load(f)
+        updated = datetime.fromisoformat(data["updated"])
+        if datetime.now() - updated < timedelta(hours=24):
+            return data["playlists"]
+    except Exception:
+        pass
+    return None
+
+def _save_playlist_cache(playlists):
+    with open(PLAYLIST_CACHE_FILE, "w") as f:
+        json.dump({"playlists": playlists, "updated": datetime.now().isoformat()}, f)
+
 TIMEOUT = httpx.Timeout(20.0)
 HEADERS = {
     "User-Agent": (
@@ -462,7 +482,7 @@ async def fetch_playlist_all_api(playlist_id, content_type, author):
                         "title": title,
                         "text": title,
                         "url": "https://www.youtube.com/watch?v=" + vid_id,
-                        "thumbnail": thumb or "https://i.ytimg.com/vi/" + vid_id + "/hqdefault.jpg",
+                        "thumbnail": thumb or "https://i.ytimg.com/vi/" + vid_id + "/mqdefault.jpg",
                         "author": author,
                         "published": published,
                         "members": [],
@@ -483,8 +503,14 @@ async def fetch_playlist_all_api(playlist_id, content_type, author):
 
 # ── 전체 수집 ─────────────────────────────────────────
 async def fetch_all_sources():
-    # 방법 A: YouTube API로 GOING SEVENTEEN 재생목록 자동 탐색
-    going17_pls = await discover_going17_playlists()
+    # 방법 A: 캐시된 재생목록 ID 사용, 없으면 YouTube API로 탐색
+    going17_pls = _load_playlist_cache()
+    if going17_pls is None:
+        going17_pls = await discover_going17_playlists()
+        if going17_pls:
+            _save_playlist_cache(going17_pls)
+    else:
+        print("[Playlist Cache] 캐시된 재생목록 " + str(len(going17_pls)) + "개 사용")
 
     tasks = []
 
