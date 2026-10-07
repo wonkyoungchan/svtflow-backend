@@ -5,7 +5,7 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 import json, os
 
@@ -108,7 +108,6 @@ async def refresh_data():
 
     # MV/Going17 중복 제목 제거 (같은 제목 영상은 최신 1개만 유지)
     yt_by_title = {}
-    news_posts = []
     for p in all_posts:
         if p.get('source') == 'youtube':
             key = p.get('title','').strip()[:50] + p.get('content_type','')
@@ -116,52 +115,14 @@ async def refresh_data():
             pub = p.get('published','')
             if not existing or pub > existing.get('published',''):
                 yt_by_title[key] = p
-        else:
-            news_posts.append(p)
-    all_posts = list(yt_by_title.values()) + news_posts
+    all_posts = list(yt_by_title.values())
 
     # 모든 날짜를 ISO 형식으로 정규화
     for p in all_posts:
         p["published"] = _normalize_date(p.get("published", ""))
 
-    # 날짜 필터
-    now = datetime.now()
-    filtered = []
-    for p in all_posts:
-        source = p.get("source", "")
-        dt = parse_date(p)
-        if source == "youtube":
-            filtered.append(p)
-        else:
-            if dt == datetime.min or dt > now - timedelta(days=90):
-                filtered.append(p)
-
-    import re as _re
-    def _tkey(t):
-        return _re.sub('[^가-힣]', '', t)[:35]
-    seen, done, result = {}, set(), []
-    for p in filtered:
-        if p.get('source') == 'youtube':
-            result.append(p)
-            continue
-        k = _tkey(p.get('title',''))
-        if not k:
-            result.append(p)
-            continue
-        if k not in seen:
-            seen[k] = p
-        elif p.get('thumbnail') and not seen[k].get('thumbnail'):
-            seen[k] = p
-    for p in filtered:
-        if p.get('source') == 'youtube':
-            continue
-        k = _tkey(p.get('title',''))
-        if k and k not in done:
-            done.add(k)
-            result.append(seen.get(k, p))
-    filtered = result
-    filtered.sort(key=parse_date, reverse=True)
-    filtered = filtered[:5000]
+    all_posts.sort(key=parse_date, reverse=True)
+    filtered = all_posts[:5000]
 
     save_cache(filtered)
     print("새 게시물 " + str(added) + "개 추가, 총 " + str(len(filtered)) + "개")
@@ -207,9 +168,6 @@ async def manual_refresh():
 @app.get("/health")
 async def health():
     data = load_cache()
-    youtube = len([p for p in data if p.get("source") == "youtube"])
-    news = len([p for p in data if p.get("source") != "youtube"])
     mv = len([p for p in data if p.get("content_type") == "mv"])
     g17 = len([p for p in data if p.get("content_type") == "going17"])
-    return {"status": "running", "total": len(data),
-            "youtube": youtube, "news": news, "mv": mv, "going17": g17}
+    return {"status": "running", "total": len(data), "mv": mv, "going17": g17}
