@@ -16,39 +16,32 @@ MEMBER_KEYWORDS = {
     "디노":   ["디노", "dino", "이찬"],
 }
 
-_MV_PATTERN = re.compile(
-    r'\bM/?V\b|Official\s*(Music\s*)?Video|Performance\s*Video|Official\s*MV',
-    re.IGNORECASE,
-)
-
 _GOING17_PATTERN = re.compile(
     r'going\s*seventeen|고잉\s*세븐틴|going\s*svt|going\s*dxs',
     re.IGNORECASE,
 )
 
-def _is_mv_title(title):
-    return bool(_MV_PATTERN.search(title))
-
-def _is_going17_title(title):
-    return bool(_GOING17_PATTERN.search(title))
+_MV_OVERRIDE_PATTERN = re.compile(
+    r'\bM/?V\b|Official\s*(Music\s*)?Video|Official\s*MV'
+    r'|Choreography\s*Video|Dance\s*Practice'
+    r'|SPECIAL\s*VIDEO|Performance\s*Video',
+    re.IGNORECASE,
+)
 
 def classify_posts(posts, quiet=False):
     filtered = []
     for post in posts:
         title = post.get("title", "")
         source = post.get("source", "")
-        ct = post.get("content_type", "")
 
         if source == "youtube":
-            if ct == "going17" and _is_mv_title(title):
-                post["content_type"] = "mv"
-            elif ct == "mv" and _is_going17_title(title) and not _is_mv_title(title):
+            has_going = bool(_GOING17_PATTERN.search(title))
+            has_mv_kw = bool(_MV_OVERRIDE_PATTERN.search(title))
+
+            if has_going and not has_mv_kw:
                 post["content_type"] = "going17"
-            elif ct not in ("going17", "mv"):
-                if _is_going17_title(title) and not _is_mv_title(title):
-                    post["content_type"] = "going17"
-                else:
-                    post["content_type"] = "mv"
+            else:
+                post["content_type"] = "mv"
 
         t = title.lower()
         scores = {}
