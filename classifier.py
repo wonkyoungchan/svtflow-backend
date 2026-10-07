@@ -1,3 +1,5 @@
+import re
+
 MEMBER_KEYWORDS = {
     "에스쿱스": ["에스쿱스", "s.coups", "최승철"],
     "정한":    ["정한", "jeonghan", "윤정한"],
@@ -14,43 +16,40 @@ MEMBER_KEYWORDS = {
     "디노":   ["디노", "dino", "이찬"],
 }
 
-SVT_KEYWORDS = [
-    "세븐틴", "seventeen", "svt",
-    "에스쿱스", "정한", "조슈아", "호시", "원우", "우지",
-    "디에잇", "민규", "도겸", "승관", "버논", "디노",
-    "s.coups", "jeonghan", "joshua", "hoshi", "wonwoo", "woozi",
-    "the8", "mingyu", "dokyeom", "seungkwan", "vernon", "dino",
-    "최승철", "윤정한", "홍지수", "권순영", "전원우", "이지훈",
-    "서명호", "김민규", "이석민", "부승관", "최한솔", "이찬", "문준휘",
-]
+_MV_PATTERN = re.compile(
+    r'\bM/?V\b|Official\s*(Music\s*)?Video|Performance\s*Video|Official\s*MV',
+    re.IGNORECASE,
+)
 
-def _is_svt(text):
-    t = text.lower()
-    return any(k in t for k in SVT_KEYWORDS)
+_GOING17_PATTERN = re.compile(
+    r'going\s*seventeen|고잉\s*세븐틴|going\s*svt|going\s*dxs',
+    re.IGNORECASE,
+)
+
+def _is_mv_title(title):
+    return bool(_MV_PATTERN.search(title))
+
+def _is_going17_title(title):
+    return bool(_GOING17_PATTERN.search(title))
 
 def classify_posts(posts):
     filtered = []
     for post in posts:
-        title  = post.get("title", "")
-        full_text = title + " " + post.get("text", "")
+        title = post.get("title", "")
         source = post.get("source", "")
-        author = post.get("author", "")
+        ct = post.get("content_type", "")
 
         if source == "youtube":
-            if "hybe" in author.lower():
+            if ct == "going17" and _is_mv_title(title):
                 post["content_type"] = "mv"
-            elif "seventeen official" in author.lower():
+            elif ct == "mv" and _is_going17_title(title) and not _is_mv_title(title):
                 post["content_type"] = "going17"
-            elif "going seventeen" in author.lower():
-                post["content_type"] = "going17"
-            elif "seventeen mv" in author.lower():
-                post["content_type"] = "mv"
-        else:
-            if not _is_svt(full_text):
-                continue
-            post["content_type"] = "general"
+            elif ct not in ("going17", "mv"):
+                if _is_going17_title(title) and not _is_mv_title(title):
+                    post["content_type"] = "going17"
+                else:
+                    post["content_type"] = "mv"
 
-        # 멤버 분류는 제목(title)만 사용 - 본문 오탐 방지
         t = title.lower()
         scores = {}
         for member, keywords in MEMBER_KEYWORDS.items():
