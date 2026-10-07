@@ -32,7 +32,7 @@ def _is_mv_title(title):
 def _is_going17_title(title):
     return bool(_GOING17_PATTERN.search(title))
 
-def classify_posts(posts):
+def classify_posts(posts, quiet=False):
     filtered = []
     for post in posts:
         title = post.get("title", "")
@@ -64,5 +64,6 @@ def classify_posts(posts):
 
         filtered.append(post)
 
-    print("분류 완료: " + str(len(filtered)) + "개 / 원본: " + str(len(posts)) + "개")
+    if not quiet:
+        print("분류 완료: " + str(len(filtered)) + "개 / 원본: " + str(len(posts)) + "개")
     return filtered

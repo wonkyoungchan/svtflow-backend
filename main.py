@@ -23,7 +23,8 @@ def load_cache():
     if not os.path.exists(CACHE_FILE):
         return []
     with open(CACHE_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+        posts = json.load(f)
+    return classify_posts(posts, quiet=True)
 
 def _normalize_date(date_str):
     if not date_str:
@@ -106,14 +107,17 @@ async def refresh_data():
                     if stats[vid_id]["published"]:
                         p["published"] = stats[vid_id]["published"]
 
+    # 모든 항목을 새 분류 기준으로 재분류
+    all_posts = classify_posts(all_posts)
+
     # MV/Going17 중복 제목 제거 (같은 제목 영상은 최신 1개만 유지)
     yt_by_title = {}
     for p in all_posts:
         if p.get('source') == 'youtube':
             key = p.get('title','').strip()[:50] + p.get('content_type','')
-            existing = yt_by_title.get(key)
+            existing_entry = yt_by_title.get(key)
             pub = p.get('published','')
-            if not existing or pub > existing.get('published',''):
+            if not existing_entry or pub > existing_entry.get('published',''):
                 yt_by_title[key] = p
     all_posts = list(yt_by_title.values())
 
