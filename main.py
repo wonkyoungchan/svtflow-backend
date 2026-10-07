@@ -103,7 +103,8 @@ async def refresh_data():
                 vid_id = extract_video_id(p.get("url", ""))
                 if vid_id and vid_id in stats:
                     p["likes"] = stats[vid_id]["views"]
-                    # API에서 받은 정확한 날짜로 교체
+                    if stats[vid_id].get("duration"):
+                        p["duration"] = stats[vid_id]["duration"]
                     if stats[vid_id]["published"]:
                         p["published"] = stats[vid_id]["published"]
 

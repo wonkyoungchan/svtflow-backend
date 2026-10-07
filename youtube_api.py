@@ -60,8 +60,16 @@ async def fetch_hybe_new_mvs() -> list:
     return posts
 
 
+def _parse_duration(iso: str) -> int:
+    if not iso:
+        return 0
+    m = re.match(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?', iso)
+    if not m:
+        return 0
+    h, mi, s = int(m.group(1) or 0), int(m.group(2) or 0), int(m.group(3) or 0)
+    return h * 3600 + mi * 60 + s
+
 async def fetch_video_stats(video_ids: list) -> dict:
-    """조회수 + 정확한 업로드 날짜 함께 가져오기"""
     if not video_ids:
         return {}
 
@@ -70,7 +78,7 @@ async def fetch_video_stats(video_ids: list) -> dict:
         batch = video_ids[i:i+50]
         url = (
             "https://www.googleapis.com/youtube/v3/videos"
-            "?part=statistics,snippet"
+            "?part=statistics,snippet,contentDetails"
             "&id=" + ",".join(batch) +
             "&key=" + YOUTUBE_API_KEY
         )
@@ -86,9 +94,11 @@ async def fetch_video_stats(video_ids: list) -> dict:
                         published_at = item.get("snippet", {}).get("publishedAt", "")
                         if published_at:
                             published_at = published_at.replace("Z", "")
+                        duration_iso = item.get("contentDetails", {}).get("duration", "")
                         stats[vid_id] = {
                             "views": view_count,
                             "published": published_at,
+                            "duration": _parse_duration(duration_iso),
                         }
         except Exception as e:
             print("[YouTube API] 오류: " + str(e))
